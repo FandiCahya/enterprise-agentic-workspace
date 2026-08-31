@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+pydantic
+langchain
+langchain-community
+langchain-postgres
+langchain-google-genai
+langgraph
+ragas
+datasets
+rank_bm25
+sentence-transformers
+psycopg[binary]
+torch
+python-dotenv

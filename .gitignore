@@ -1,0 +1,14 @@
+# Python virtual environment
+venv/
+ENV/
+env/
+
+# Environment Variables (API Keys rahasia)
+.env
+
+# Python Cache & Database lokal
+__pycache__/
+*.py[cod]
+*.sqlite3
+.chroma/
+chroma_db/
