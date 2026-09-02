@@ -190,15 +190,15 @@ app.add_middleware(
 )
 
 class DocumentIngestRequest(BaseModel):
-    content: str = Field(..., example="Gladi bersih wisuda dilaksanakan H-1 sebelum hari H.")
-    metadata: Optional[dict] = Field(default_factory=dict, example={"category": "wisuda", "page": 1})
+    content: str = Field(..., examples=["Gladi bersih wisuda dilaksanakan H-1 sebelum hari H."])
+    metadata: Optional[dict] = Field(default_factory=dict, examples=[{"category": "wisuda", "page": 1}])
 
 class SearchQueryRequest(BaseModel):
-    query: str = Field(..., example="Kapan gladi bersih wisuda?")
+    query: str = Field(..., examples=["Kapan gladi bersih wisuda?"])
     top_k: int = Field(default=3, ge=1, le=10)
 
 class ChatRequest(BaseModel):
-    query: str = Field(..., example="Berapa hari syarat pengajuan refund?")
+    query: str = Field(..., examples=["Berapa hari syarat pengajuan refund?"])
     stream: bool = Field(default=True)
 
 
