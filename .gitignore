@@ -2,6 +2,8 @@
 venv/
 ENV/
 env/
+data/*
+!data/.gitkeep
 
 # Environment Variables (API Keys rahasia)
 .env

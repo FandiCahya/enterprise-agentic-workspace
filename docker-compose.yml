@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  # 1. Vector Database: PostgreSQL dengan Ekstensi PGVector
+  postgres-pgvector:
+    image: pgvector/pgvector:pg16
+    container_name: postgres-pgvector
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: adminpassword
+      POSTGRES_DB: enterprise_rag
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgvector_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d enterprise_rag"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  # 2. LLM Observability & Tracing: Arize Phoenix
+  phoenix-observability:
+    image: arizephoenix/phoenix:latest
+    container_name: phoenix-observability
+    ports:
+      - "6006:6006" # UI Dashboard Phoenix
+      - "4317:4317" # OpenTelemetry gRPC Collector
+    environment:
+      - PHOENIX_PORT=6006
+    restart: always
+
+volumes:
+  pgvector_data:
+    driver: local

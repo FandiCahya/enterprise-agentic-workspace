@@ -1,15 +1,33 @@
+# API & Server
 fastapi
 uvicorn[standard]
 pydantic
+python-dotenv
+
+# LangChain Core
 langchain
+langchain-core
 langchain-community
+langchain-text-splitters
 langchain-postgres
+
+# LangChain Integrations
 langchain-google-genai
+langchain-huggingface
 langgraph
+
+# Embeddings & ML
+sentence-transformers
+torch
+
+# Document Loaders
+pypdf
+docx2txt
+
+# Database
+psycopg[binary]
+
+# Evaluation
 ragas
 datasets
 rank_bm25
-sentence-transformers
-psycopg[binary]
-torch
-python-dotenv
