@@ -15,7 +15,9 @@ if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
     except Exception:
         pass
 
-from fastapi import FastAPI, HTTPException, status
+import tempfile
+import shutil
+from fastapi import FastAPI, HTTPException, UploadFile, File, status
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -238,6 +240,79 @@ async def ingest_document(payload: DocumentIngestRequest):
         return {"message": "Dokumen berhasil disimpan ke PGVector!", "content": payload.content}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gagal menyimpan dokumen: {str(e)}")
+
+
+@app.post("/api/v1/documents/upload", status_code=status.HTTP_201_CREATED)
+async def upload_document(file: UploadFile = File(...)):
+    """
+    Upload file dokumen (PDF, DOCX, TXT, MD) langsung ke PGVector.
+    File akan otomatis di-chunk menggunakan RecursiveCharacterTextSplitter
+    sebelum disimpan sebagai vector embeddings.
+    """
+    SUPPORTED = {".pdf", ".docx", ".txt", ".md"}
+    ext = os.path.splitext(file.filename or "")[-1].lower()
+    if ext not in SUPPORTED:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Format tidak didukung: '{ext}'. Gunakan: {', '.join(SUPPORTED)}"
+        )
+
+    # Simpan file sementara agar loaders bisa membacanya dari disk
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+            shutil.copyfileobj(file.file, tmp)
+            tmp_path = tmp.name
+
+        # Import loader yang sesuai
+        from langchain_text_splitters import RecursiveCharacterTextSplitter
+        if ext == ".pdf":
+            from langchain_community.document_loaders import PyPDFLoader
+            loader = PyPDFLoader(tmp_path)
+        elif ext == ".docx":
+            from langchain_community.document_loaders import Docx2txtLoader
+            loader = Docx2txtLoader(tmp_path)
+        else:  # .txt / .md
+            from langchain_community.document_loaders import TextLoader
+            loader = TextLoader(tmp_path, encoding="utf-8")
+
+        docs = loader.load()
+        for doc in docs:
+            doc.metadata["source_filename"] = file.filename
+            doc.metadata["file_type"] = ext.lstrip(".")
+
+        # Chunking
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000,
+            chunk_overlap=200,
+            separators=["\n\n\n", "\n\n", "\n", ". ", " ", ""],
+        )
+        chunks = splitter.split_documents(docs)
+        for i, chunk in enumerate(chunks):
+            chunk.metadata["chunk_index"] = i
+            chunk.metadata["chunk_size"] = len(chunk.page_content)
+
+        if not chunks:
+            raise HTTPException(status_code=422, detail="Tidak ada teks yang bisa diekstrak dari file.")
+
+        # Upload ke PGVector
+        vector_store = get_vector_store()
+        vector_store.add_documents(chunks)
+
+        return {
+            "message": f"File '{file.filename}' berhasil diproses!",
+            "filename": file.filename,
+            "pages": len(docs),
+            "chunks_stored": len(chunks),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal memproses file: {str(e)}")
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
 
 
 @app.post("/api/v1/documents/search")
