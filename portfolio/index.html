@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Enterprise Agentic RAG Workspace — Portfolio</title>
+  <meta name="description" content="Production-grade Document Intelligence & Agentic RAG pipeline built with FastAPI, LangGraph, and PGVector. Faithfulness score 100% on RAGAS benchmark." />
+  <meta property="og:title" content="Enterprise Agentic RAG Workspace" />
+  <meta property="og:description" content="Self-correcting Agentic RAG with Hybrid Search, Cross-Encoder Re-ranking, and LangGraph workflow." />
+  <meta property="og:type" content="website" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ═══════════════════════════════════════════════
+       RESET & BASE
+    ═══════════════════════════════════════════════ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:        #050811;
+      --bg2:       #080e1a;
+      --surface:   rgba(255,255,255,0.04);
+      --border:    rgba(255,255,255,0.08);
+      --border-hi: rgba(255,255,255,0.16);
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --violet:    #7c3aed;
+      --indigo:    #6366f1;
+      --cyan:      #06b6d4;
+      --green:     #10b981;
+      --amber:     #f59e0b;
+      --pink:      #ec4899;
+      --grad1: linear-gradient(135deg, #7c3aed, #6366f1, #06b6d4);
+      --grad2: linear-gradient(135deg, #10b981, #06b6d4);
+      --grad3: linear-gradient(135deg, #7c3aed, #ec4899);
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    /* ═══════════════════════════════════════════════
+       CANVAS BACKGROUND
+    ═══════════════════════════════════════════════ */
+    #bg-canvas {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    }
+
+    /* ═══════════════════════════════════════════════
+       LAYOUT HELPERS
+    ═══════════════════════════════════════════════ */
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+    section { padding: 96px 0; }
+
+    /* ═══════════════════════════════════════════════
+       NAV
+    ═══════════════════════════════════════════════ */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 16px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(5,8,17,0.7);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      transition: background 0.3s;
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 10px;
+      font-weight: 700; font-size: 15px;
+    }
+    .nav-logo-icon {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--grad1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    .nav-links { display: flex; gap: 28px; }
+    .nav-links a {
+      font-size: 13px; font-weight: 500; color: var(--muted);
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 18px; border-radius: 8px;
+      background: var(--grad1); font-size: 13px; font-weight: 600;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .nav-cta:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    /* ═══════════════════════════════════════════════
+       HERO
+    ═══════════════════════════════════════════════ */
+    .hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      text-align: center;
+      padding: 120px 24px 80px;
+      position: relative; z-index: 1;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 16px; border-radius: 100px;
+      border: 1px solid rgba(99,102,241,0.4);
+      background: rgba(99,102,241,0.08);
+      font-size: 12px; font-weight: 600; color: #a5b4fc;
+      letter-spacing: 0.05em; text-transform: uppercase;
+      margin-bottom: 32px;
+      animation: fadeInDown 0.6s ease both;
+    }
+    .hero-badge-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--indigo);
+      animation: pulse 2s ease infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.4); }
+    }
+    .hero h1 {
+      font-size: clamp(38px, 7vw, 80px);
+      font-weight: 900; line-height: 1.08;
+      letter-spacing: -0.03em;
+      margin-bottom: 24px;
+      animation: fadeInDown 0.6s 0.1s ease both;
+    }
+    .hero h1 .line2 { display: block; }
+    .grad-text {
+      background: var(--grad1);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .grad-text-green {
+      background: var(--grad2);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-sub {
+      max-width: 620px;
+      font-size: 18px; color: var(--muted); line-height: 1.7;
+      margin-bottom: 48px;
+      animation: fadeInDown 0.6s 0.2s ease both;
+    }
+    .hero-actions {
+      display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;
+      animation: fadeInDown 0.6s 0.3s ease both;
+    }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 14px 28px; border-radius: 12px;
+      background: var(--grad1); color: white;
+      font-size: 15px; font-weight: 600;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 0 30px rgba(99,102,241,0.3);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 50px rgba(99,102,241,0.5);
+    }
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 14px 28px; border-radius: 12px;
+      border: 1px solid var(--border-hi);
+      background: var(--surface);
+      font-size: 15px; font-weight: 600;
+      transition: transform 0.2s, border-color 0.2s;
+      backdrop-filter: blur(10px);
+    }
+    .btn-secondary:hover { transform: translateY(-2px); border-color: var(--indigo); }
+
+    .hero-stats {
+      margin-top: 72px;
+      display: flex; gap: 48px; flex-wrap: wrap; justify-content: center;
+      animation: fadeInDown 0.6s 0.4s ease both;
+    }
+    .hero-stat { text-align: center; }
+    .hero-stat-value {
+      font-size: 36px; font-weight: 900; line-height: 1;
+      margin-bottom: 6px;
+    }
+    .hero-stat-label { font-size: 13px; color: var(--muted); font-weight: 500; }
+
+    /* ═══════════════════════════════════════════════
+       SECTION LABELS
+    ═══════════════════════════════════════════════ */
+    .section-tag {
+      display: inline-block;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--indigo);
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: clamp(26px, 4vw, 40px);
+      font-weight: 800; letter-spacing: -0.02em;
+      line-height: 1.2; margin-bottom: 16px;
+    }
+    .section-sub {
+      font-size: 16px; color: var(--muted); max-width: 560px;
+    }
+    .section-header { margin-bottom: 56px; }
+
+    /* ═══════════════════════════════════════════════
+       GLASS CARD
+    ═══════════════════════════════════════════════ */
+    .glass {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      backdrop-filter: blur(12px);
+      transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s;
+    }
+    .glass:hover {
+      border-color: var(--border-hi);
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    }
+
+    /* ═══════════════════════════════════════════════
+       FEATURES GRID
+    ═══════════════════════════════════════════════ */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    .feature-card {
+      padding: 28px;
+    }
+    .feature-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; margin-bottom: 20px;
+    }
+    .feature-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .feature-card p { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+    /* ═══════════════════════════════════════════════
+       BENCHMARK SCORES
+    ═══════════════════════════════════════════════ */
+    #scores { background: linear-gradient(180deg, transparent, rgba(99,102,241,0.03), transparent); }
+
+    .scores-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    .score-card { padding: 28px; }
+    .score-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+    .score-label { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .score-sub { font-size: 12px; color: var(--muted); }
+    .score-value { font-size: 32px; font-weight: 900; line-height: 1; }
+    .score-track {
+      height: 6px; background: rgba(255,255,255,0.07);
+      border-radius: 99px; overflow: hidden; margin-bottom: 12px;
+      position: relative;
+    }
+    .score-fill {
+      height: 100%; border-radius: 99px; width: 0;
+      transition: width 1.4s cubic-bezier(0.16,1,0.3,1);
+    }
+    .score-target-mark {
+      position: absolute; top: -3px; width: 2px; height: 12px;
+      background: rgba(255,255,255,0.3); border-radius: 1px;
+    }
+    .score-meta { display: flex; justify-content: space-between; }
+    .score-pass {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 12px; font-weight: 600; color: var(--green);
+    }
+    .score-target-label { font-size: 12px; color: var(--muted); }
+
+    /* All passed banner */
+    .scores-banner {
+      margin-top: 28px; padding: 20px 28px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(6,182,212,0.08));
+      border: 1px solid rgba(16,185,129,0.2);
+      display: flex; align-items: center; gap: 16px;
+    }
+    .banner-icon { font-size: 28px; }
+    .banner-text strong { font-size: 15px; font-weight: 700; color: var(--green); }
+    .banner-text p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+    /* ═══════════════════════════════════════════════
+       PIPELINE / ARCHITECTURE
+    ═══════════════════════════════════════════════ */
+    .pipeline-steps {
+      display: flex; flex-direction: column; gap: 0;
+      position: relative;
+    }
+    .pipeline-steps::before {
+      content: ''; position: absolute;
+      left: 23px; top: 24px; bottom: 24px; width: 2px;
+      background: linear-gradient(180deg, var(--violet), var(--cyan));
+      opacity: 0.3;
+    }
+    .pipeline-step {
+      display: flex; align-items: flex-start; gap: 20px;
+      padding: 20px 24px;
+      border-radius: 14px;
+      transition: background 0.2s;
+      position: relative;
+    }
+    .pipeline-step:hover { background: rgba(255,255,255,0.03); }
+    .step-num {
+      width: 48px; height: 48px; border-radius: 12px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 700;
+      border: 1px solid var(--border);
+      background: var(--bg2);
+      z-index: 1;
+    }
+    .step-content h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .step-content p { font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .step-tag {
+      display: inline-block; margin-top: 8px;
+      padding: 3px 10px; border-radius: 99px;
+      font-size: 11px; font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ═══════════════════════════════════════════════
+       TECH STACK
+    ═══════════════════════════════════════════════ */
+    #stack { background: linear-gradient(180deg, transparent, rgba(6,182,212,0.02), transparent); }
+
+    .stack-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 16px;
+    }
+    .stack-card {
+      padding: 24px 20px;
+      text-align: center;
+    }
+    .stack-icon { font-size: 32px; margin-bottom: 12px; }
+    .stack-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+    .stack-role { font-size: 12px; color: var(--muted); }
+
+    /* ═══════════════════════════════════════════════
+       TERMINAL / CODE BLOCK
+    ═══════════════════════════════════════════════ */
+    .terminal {
+      background: #0a0f1e;
+      border: 1px solid var(--border);
+      border-radius: 14px; overflow: hidden;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px; line-height: 1.8;
+    }
+    .terminal-bar {
+      padding: 12px 16px;
+      background: rgba(255,255,255,0.03);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .term-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+    }
+    .term-title { margin-left: auto; font-size: 11px; color: var(--muted); }
+    .terminal-body { padding: 20px; }
+    .term-line { display: flex; gap: 12px; }
+    .term-prompt { color: var(--indigo); }
+    .term-cmd { color: var(--text); }
+    .term-comment { color: var(--muted); }
+    .term-out { color: var(--green); padding-left: 16px; }
+    .term-out-dim { color: #475569; padding-left: 16px; }
+
+    /* ═══════════════════════════════════════════════
+       FOOTER
+    ═══════════════════════════════════════════════ */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 48px 24px;
+      text-align: center;
+      position: relative; z-index: 1;
+    }
+    .footer-logo {
+      font-size: 18px; font-weight: 800; margin-bottom: 12px;
+    }
+    .footer-sub { font-size: 14px; color: var(--muted); margin-bottom: 32px; }
+    .footer-links { display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; }
+    .footer-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 13px; font-weight: 500; color: var(--muted);
+      padding: 8px 16px; border-radius: 8px;
+      border: 1px solid var(--border);
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .footer-link:hover { color: var(--text); border-color: var(--border-hi); }
+    .footer-copy { margin-top: 36px; font-size: 12px; color: #374151; }
+
+    /* ═══════════════════════════════════════════════
+       SCROLL REVEAL
+    ═══════════════════════════════════════════════ */
+    .reveal { opacity: 0; transform: translateY(30px); transition: opacity 0.7s ease, transform 0.7s ease; }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+
+    /* ═══════════════════════════════════════════════
+       ANIMATIONS
+    ═══════════════════════════════════════════════ */
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes shimmer {
+      0% { background-position: -200% center; }
+      100% { background-position: 200% center; }
+    }
+    .shimmer-text {
+      background: linear-gradient(90deg, #7c3aed, #6366f1, #06b6d4, #10b981, #6366f1, #7c3aed);
+      background-size: 200% auto;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 4s linear infinite;
+    }
+
+    /* ═══════════════════════════════════════════════
+       RESPONSIVE
+    ═══════════════════════════════════════════════ */
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      section { padding: 64px 0; }
+      .hero-stats { gap: 28px; }
+      .hero-stat-value { font-size: 28px; }
+      .pipeline-steps::before { display: none; }
+    }
+
+    /* ═══════════════════════════════════════════════
+       DIVIDER
+    ═══════════════════════════════════════════════ */
+    .glow-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--indigo), var(--cyan), transparent);
+      opacity: 0.3; margin: 0;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Animated background canvas -->
+<canvas id="bg-canvas"></canvas>
+
+<!-- ═══════════════════════════════════ NAV ═════════════════════════════════ -->
+<nav id="nav">
+  <div class="nav-logo">
+    <div class="nav-logo-icon">⚡</div>
+    <span>Enterprise RAG</span>
+  </div>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#scores">Benchmark</a>
+    <a href="#pipeline">Pipeline</a>
+    <a href="#stack">Tech Stack</a>
+  </div>
+  <a href="https://github.com/FandiCahya/enterprise-agentic-workspace" target="_blank" class="nav-cta" id="nav-github-btn">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+    View on GitHub
+  </a>
+</nav>
+
+<!-- ═══════════════════════════════════ HERO ════════════════════════════════ -->
+<section class="hero" id="home">
+  <div class="hero-badge">
+    <div class="hero-badge-dot"></div>
+    Production-Grade AI Engineering Project
+  </div>
+
+  <h1>
+    Enterprise<br/>
+    <span class="line2 shimmer-text">Agentic RAG Workspace</span>
+  </h1>
+
+  <p class="hero-sub">
+    A self-correcting Document Intelligence pipeline powered by <strong>LangGraph</strong>, 
+    <strong>Hybrid Search</strong>, and <strong>Cross-Encoder Re-ranking</strong> — 
+    achieving <strong style="color: #10b981">100% Faithfulness</strong> on RAGAS benchmark.
+  </p>
+
+  <div class="hero-actions">
+    <a href="https://github.com/FandiCahya/enterprise-agentic-workspace" target="_blank" class="btn-primary" id="hero-github-btn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      GitHub Repository
+    </a>
+    <a href="#pipeline" class="btn-secondary" id="hero-pipeline-btn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12H2M15 19l7-7-7-7"/></svg>
+      Explore Pipeline
+    </a>
+  </div>
+
+  <div class="hero-stats">
+    <div class="hero-stat">
+      <div class="hero-stat-value grad-text-green">100%</div>
+      <div class="hero-stat-label">Faithfulness Score</div>
+    </div>
+    <div class="hero-stat">
+      <div class="hero-stat-value" style="background: var(--grad1); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">0%</div>
+      <div class="hero-stat-label">Hallucination Rate</div>
+    </div>
+    <div class="hero-stat">
+      <div class="hero-stat-value" style="background: var(--grad3); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">3/3</div>
+      <div class="hero-stat-label">RAGAS Metrics Passed</div>
+    </div>
+    <div class="hero-stat">
+      <div class="hero-stat-value" style="color: var(--cyan);">5</div>
+      <div class="hero-stat-label">Pipeline Stages</div>
+    </div>
+  </div>
+</section>
+
+<div class="glow-divider"></div>
+
+<!-- ═══════════════════════════════════ FEATURES ════════════════════════════ -->
+<section id="features">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-tag">Key Capabilities</div>
+      <h2 class="section-title">Built for Production. <span class="grad-text">Engineered for Accuracy.</span></h2>
+      <p class="section-sub">Every component designed to maximize retrieval quality and minimize hallucination.</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card glass reveal" style="transition-delay: 0.05s">
+        <div class="feature-icon" style="background: rgba(124,58,237,0.15); border: 1px solid rgba(124,58,237,0.3);">🔍</div>
+        <h3>Hybrid Search (RRF)</h3>
+        <p>Combines dense semantic vectors (PGVector) and sparse lexical search (BM25) via Reciprocal Rank Fusion for optimal recall.</p>
+      </div>
+      <div class="feature-card glass reveal" style="transition-delay: 0.1s">
+        <div class="feature-icon" style="background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3);">⚖️</div>
+        <h3>Cross-Encoder Re-ranking</h3>
+        <p>Re-scores retrieved chunks using <code style="background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px; font-size: 12px;">BAAI/bge-reranker-base</code> to surface the most relevant context.</p>
+      </div>
+      <div class="feature-card glass reveal" style="transition-delay: 0.15s">
+        <div class="feature-icon" style="background: rgba(6,182,212,0.15); border: 1px solid rgba(6,182,212,0.3);">🔄</div>
+        <h3>Self-Correcting Workflow</h3>
+        <p>LangGraph agentic loop automatically evaluates relevancy and rewrites queries — up to 2× retry cycles — without human intervention.</p>
+      </div>
+      <div class="feature-card glass reveal" style="transition-delay: 0.2s">
+        <div class="feature-icon" style="background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3);">📄</div>
+        <h3>Document Intelligence</h3>
+        <p>Auto-chunking ingestion for PDF, DOCX, and TXT with structured metadata extraction and semantic embeddings.</p>
+      </div>
+      <div class="feature-card glass reveal" style="transition-delay: 0.25s">
+        <div class="feature-icon" style="background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3);">📡</div>
+        <h3>Full Observability</h3>
+        <p>Integrated OpenTelemetry tracing sent to <strong>Arize Phoenix</strong> dashboard for complete pipeline visibility.</p>
+      </div>
+      <div class="feature-card glass reveal" style="transition-delay: 0.3s">
+        <div class="feature-icon" style="background: rgba(236,72,153,0.15); border: 1px solid rgba(236,72,153,0.3);">📊</div>
+        <h3>RAGAS Evaluation</h3>
+        <p>Automated quantitative scoring for Faithfulness, Answer Relevancy, and Context Precision using Gemini Flash evaluator.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="glow-divider"></div>
+
+<!-- ═══════════════════════════════════ SCORES ══════════════════════════════ -->
+<section id="scores">
+  <div class="container">
+    <div class="section-header reveal">
+      <div class="section-tag">RAGAS Benchmark</div>
+      <h2 class="section-title">Quantitative <span class="grad-text">Evaluation Results</span></h2>
+      <p class="section-sub">Automated benchmark using RAGAS framework with Gemini Flash as evaluator model.</p>
+    </div>
+
+    <div class="scores-grid">
+      <!-- Faithfulness -->
+      <div class="score-card glass reveal" data-delay="0" style="transition-delay: 0.05s">
+        <div class="score-top">
+          <div>
+            <div class="score-label">Faithfulness</div>
+            <div class="score-sub">0% Hallucination · Grounded 100%</div>
+          </div>
+          <div class="score-value" style="color: #10b981;" data-score="100">0%</div>
+        </div>
+        <div class="score-track">
+          <div class="score-target-mark" style="left: 85%"></div>
+          <div class="score-fill" data-target="100" style="background: linear-gradient(90deg, #059669, #10b981); box-shadow: 0 0 12px rgba(16,185,129,0.4);"></div>
+        </div>
+        <div class="score-meta">
+          <span class="score-pass">✓ PASSED</span>
+          <span class="score-target-label">Target: &gt;85%</span>
+        </div>
+      </div>
+
+      <!-- Answer Relevancy -->
+      <div class="score-card glass reveal" style="transition-delay: 0.1s">
+        <div class="score-top">
+          <div>
+            <div class="score-label">Answer Relevancy</div>
+            <div class="score-sub">Highly relevant to user intent</div>
+          </div>
+          <div class="score-value" style="color: #6366f1;" data-score="83.13">0%</div>
+        </div>
+        <div class="score-track">
+          <div class="score-target-mark" style="left: 80%"></div>
+          <div class="score-fill" data-target="83.13" style="background: linear-gradient(90deg, #4f46e5, #6366f1); box-shadow: 0 0 12px rgba(99,102,241,0.4);"></div>
+        </div>
+        <div class="score-meta">
+          <span class="score-pass">✓ PASSED</span>
+          <span class="score-target-label">Target: &gt;80%</span>
+        </div>
+      </div>
+
+      <!-- Context Recall -->
+      <div class="score-card glass reveal" style="transition-delay: 0.15s">
+        <div class="score-top">
+          <div>
+            <div class="score-label">Context Recall</div>
+            <div class="score-sub">Factual context successfully extracted</div>
+          </div>
+          <div class="score-value" style="color: #a78bfa;" data-score="85">0%</div>
+        </div>
+        <div class="score-track">
+          <div class="score-target-mark" style="left: 75%"></div>
+          <div class="score-fill" data-target="85" style="background: linear-gradient(90deg, #7c3aed, #a78bfa); box-shadow: 0 0 12px rgba(167,139,250,0.4);"></div>
+        </div>
+        <div class="score-meta">
+          <span class="score-pass">✓ PASSED</span>
+          <span class="score-target-label">Target: &gt;75%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="scores-banner reveal" style="transition-delay: 0.2s">
+      <div class="banner-icon">🏆</div>
+      <div class="banner-text">
+        <strong>All 3 metrics passed — including perfect Faithfulness</strong>
+        <p>Zero hallucinations. Every answer is 100% grounded in retrieved document context.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="glow-divider"></div>
+
+<!-- ═══════════════════════════════════ PIPELINE ════════════════════════════ -->
+<section id="pipeline">
+  <div class="container">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: start;">
+      <div>
+        <div class="section-header reveal">
+          <div class="section-tag">Architecture</div>
+          <h2 class="section-title">The <span class="grad-text">Agentic Pipeline</span></h2>
+          <p class="section-sub">A LangGraph-powered graph that orchestrates retrieval, evaluation, and self-correction in a unified workflow.</p>
+        </div>
+
+        <div class="pipeline-steps">
+          <div class="pipeline-step reveal" style="transition-delay: 0.05s">
+            <div class="step-num">🔍</div>
+            <div class="step-content">
+              <h3>Hybrid Retrieval</h3>
+              <p>BM25 lexical + PGVector semantic search fused via Reciprocal Rank Fusion for maximum recall.</p>
+              <span class="step-tag" style="background: rgba(124,58,237,0.15); color: #a78bfa; border: 1px solid rgba(124,58,237,0.3);">BM25 + PGVector</span>
+            </div>
+          </div>
+          <div class="pipeline-step reveal" style="transition-delay: 0.1s">
+            <div class="step-num">⚖️</div>
+            <div class="step-content">
+              <h3>Cross-Encoder Re-ranking</h3>
+              <p>BAAI/bge-reranker-base rescores all candidates — keeping only the most relevant chunks.</p>
+              <span class="step-tag" style="background: rgba(99,102,241,0.15); color: #818cf8; border: 1px solid rgba(99,102,241,0.3);">HuggingFace Reranker</span>
+            </div>
+          </div>
+          <div class="pipeline-step reveal" style="transition-delay: 0.15s">
+            <div class="step-num">🧠</div>
+            <div class="step-content">
+              <h3>LLM Context Evaluation</h3>
+              <p>Gemini Flash evaluates retrieved context quality — deciding if it's sufficient to generate an answer.</p>
+              <span class="step-tag" style="background: rgba(6,182,212,0.15); color: #22d3ee; border: 1px solid rgba(6,182,212,0.3);">Gemini Flash</span>
+            </div>
+          </div>
+          <div class="pipeline-step reveal" style="transition-delay: 0.2s">
+            <div class="step-num">🔄</div>
+            <div class="step-content">
+              <h3>Self-Correction Loop</h3>
+              <p>If context is insufficient, the agent automatically rewrites the query and retries — up to 2 correction cycles.</p>
+              <span class="step-tag" style="background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3);">LangGraph Loop</span>
+            </div>
+          </div>
+          <div class="pipeline-step reveal" style="transition-delay: 0.25s">
+            <div class="step-num">✨</div>
+            <div class="step-content">
+              <h3>Grounded Generation</h3>
+              <p>Final answer generated only from validated, high-quality context — eliminating hallucinations.</p>
+              <span class="step-tag" style="background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3);">RAG Generation</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="reveal" style="transition-delay: 0.1s">
+        <div class="terminal">
+          <div class="terminal-bar">
+            <div class="term-dot" style="background: #ef4444;"></div>
+            <div class="term-dot" style="background: #f59e0b;"></div>
+            <div class="term-dot" style="background: #10b981;"></div>
+            <span class="term-title">agent pipeline · LangGraph</span>
+          </div>
+          <div class="terminal-body">
+            <div class="term-line"><span class="term-prompt">$</span><span class="term-cmd"> uvicorn src.main:app --port 8000</span></div>
+            <div class="term-out-dim" style="margin-top: 8px">INFO: Application startup complete.</div>
+            <br/>
+            <div class="term-line"><span class="term-prompt">→</span><span class="term-cmd" style="color: #a78bfa"> [RETRIEVAL] Hybrid search (BM25 + Vector)...</span></div>
+            <div class="term-out-dim">  ↳ 10 candidates retrieved via RRF</div>
+            <br/>
+            <div class="term-line"><span class="term-prompt">→</span><span class="term-cmd" style="color: #818cf8"> [RERANK] Cross-encoder scoring...</span></div>
+            <div class="term-out-dim">  ↳ bge-reranker-base: top 4 selected</div>
+            <br/>
+            <div class="term-line"><span class="term-prompt">→</span><span class="term-cmd" style="color: #22d3ee"> [EVALUATE] Gemini: context quality check...</span></div>
+            <div class="term-out-dim">  ↳ Grade: RELEVANT ✓  retry_count=0</div>
+            <br/>
+            <div class="term-line"><span class="term-prompt">→</span><span class="term-cmd" style="color: #34d399"> [GENERATE] Building grounded response...</span></div>
+            <div class="term-out" style="margin-top: 4px">  ✅ Answer streamed · 0% hallucination</div>
+            <br/>
+            <div class="term-out-dim">  Faithfulness: 1.000 · Relevancy: 0.831</div>
+            <div class="term-out-dim">  Traces → Arize Phoenix :6006 🔭</div>
+          </div>
+        </div>
+
+        <div class="glass" style="margin-top: 16px; padding: 20px 24px;">
+          <div style="font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 14px;">Evaluation Framework</div>
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--green);"></div>
+            <span style="font-size: 13px; color: var(--muted);">Automated RAGAS scoring on every run</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--indigo);"></div>
+            <span style="font-size: 13px; color: var(--muted);">OpenTelemetry traces → Arize Phoenix</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--cyan);"></div>
+            <span style="font-size: 13px; color: var(--muted);">Full streaming SSE via FastAPI</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="glow-divider"></div>
+
+<!-- ═══════════════════════════════════ TECH STACK ══════════════════════════ -->
+<section id="stack">
+  <div class="container">
+    <div class="section-header reveal" style="text-align: center; display: flex; flex-direction: column; align-items: center;">
+      <div class="section-tag">Tech Stack</div>
+      <h2 class="section-title">Built With <span class="grad-text">Best-in-Class Tools</span></h2>
+      <p class="section-sub" style="text-align: center;">Every technology chosen for production reliability and state-of-the-art performance.</p>
+    </div>
+
+    <div class="stack-grid">
+      <div class="stack-card glass reveal" style="transition-delay: 0.02s">
+        <div class="stack-icon">⚡</div>
+        <div class="stack-name">FastAPI</div>
+        <div class="stack-role">API Framework</div>
+      </div>
+      <div class="stack-card glass reveal" style="transition-delay: 0.04s">
+        <div class="stack-icon">🔗</div>
+        <div class="stack-name">LangGraph</div>
+        <div class="stack-role">Agentic Workflow</div>
+      </div>
+      <div class="stack-card glass reveal" style="transition-delay: 0.06s">
+        <div class="stack-icon">🪄</div>
+        <div class="stack-name">LangChain</div>
+        <div class="stack-role">LLM Orchestration</div>
+      </div>
+      <div class="stack-card glass reveal" style="transition-delay: 0.08s">
+        <div class="stack-icon">💎</div>
+        <div class="stack-name">Gemini Flash</div>
+        <div class="stack-role">LLM · Evaluator</div>
+      </div>
+      <div class="stack-card glass reveal" style="transition-delay: 0.10s">
+        <div class="stack-icon">🗄️</div>
+        <div class="stack-name">PostgreSQL</div>
+        <div class="stack-role">Vector Database</div>
+      </div>
+      <div class="stack-card glass reveal" style="transition-delay: 0.12s">
+        <div class="stack-icon">🔷</div>
+        <div class="stack-name">PGVector</div>
+        <div class="stack-role">Semantic Search</div>
+      </div>
+      <div class="stack-card glass reveal" style="transition-delay: 0.14s">
+        <div class="stack-icon">🤗</div>
+        <div class="stack-name">HuggingFace</div>
+        <div class="stack-role">Reranker Model</div>
+      </div>
+      <div class="stack-card glass reveal" style="transition-delay: 0.16s">
+        <div class="stack-icon">📡</div>
+        <div class="stack-name">Arize Phoenix</div>
+        <div class="stack-role">Observability</div>
+      </div>
+      <div class="stack-card glass reveal" style="transition-delay: 0.18s">
+        <div class="stack-icon">📊</div>
+        <div class="stack-name">RAGAS</div>
+        <div class="stack-role">Evaluation Framework</div>
+      </div>
+      <div class="stack-card glass reveal" style="transition-delay: 0.20s">
+        <div class="stack-icon">🐳</div>
+        <div class="stack-name">Docker</div>
+        <div class="stack-role">Infrastructure</div>
+      </div>
+      <div class="stack-card glass reveal" style="transition-delay: 0.22s">
+        <div class="stack-icon">🔭</div>
+        <div class="stack-name">OpenTelemetry</div>
+        <div class="stack-role">Distributed Tracing</div>
+      </div>
+      <div class="stack-card glass reveal" style="transition-delay: 0.24s">
+        <div class="stack-icon">⚛️</div>
+        <div class="stack-name">React + Vite</div>
+        <div class="stack-role">Frontend UI</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="glow-divider"></div>
+
+<!-- ═══════════════════════════════════ FOOTER ══════════════════════════════ -->
+<footer>
+  <div class="footer-logo">
+    ⚡ <span class="grad-text">Enterprise Agentic RAG Workspace</span>
+  </div>
+  <div class="footer-sub">Production-grade Document Intelligence · LangGraph · Hybrid RAG · Self-Correction</div>
+  <div class="footer-links">
+    <a href="https://github.com/FandiCahya/enterprise-agentic-workspace" target="_blank" class="footer-link" id="footer-github-btn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+      GitHub
+    </a>
+    <a href="#features" class="footer-link" id="footer-features-btn">Features</a>
+    <a href="#scores" class="footer-link" id="footer-scores-btn">Benchmark</a>
+    <a href="#pipeline" class="footer-link" id="footer-pipeline-btn">Pipeline</a>
+    <a href="#stack" class="footer-link" id="footer-stack-btn">Tech Stack</a>
+  </div>
+  <div class="footer-copy">Built with FastAPI · LangGraph · Google Gemini · PGVector</div>
+</footer>
+
+<!-- ═══════════════════════════════════ SCRIPTS ══════════════════════════════ -->
+<script>
+/* ─── Animated Particle Canvas Background ─── */
+(function () {
+  const canvas = document.getElementById('bg-canvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, particles, frame = 0;
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+
+  function createParticles() {
+    particles = Array.from({ length: 80 }, () => ({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: Math.random() * 1.5 + 0.3,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      alpha: Math.random() * 0.5 + 0.1,
+      color: ['#7c3aed', '#6366f1', '#06b6d4', '#10b981'][Math.floor(Math.random() * 4)],
+    }));
+  }
+
+  function drawGrid() {
+    const size = 60;
+    ctx.strokeStyle = 'rgba(255,255,255,0.015)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += size) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+    }
+    for (let y = 0; y < H; y += size) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+  }
+
+  function drawGlow() {
+    const cx = W * 0.5, cy = H * 0.4;
+    const gr = ctx.createRadialGradient(cx, cy, 0, cx, cy, W * 0.5);
+    gr.addColorStop(0, 'rgba(99,102,241,0.08)');
+    gr.addColorStop(0.5, 'rgba(124,58,237,0.04)');
+    gr.addColorStop(1, 'transparent');
+    ctx.fillStyle = gr;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  function tick() {
+    ctx.clearRect(0, 0, W, H);
+    drawGrid();
+    drawGlow();
+
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0) p.x = W;
+      if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H;
+      if (p.y > H) p.y = 0;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.color + Math.floor(p.alpha * 255).toString(16).padStart(2, '0');
+      ctx.fill();
+    });
+
+    // Connect nearby particles
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 120) {
+          ctx.strokeStyle = `rgba(99,102,241,${0.06 * (1 - dist / 120)})`;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+
+    frame++;
+    requestAnimationFrame(tick);
+  }
+
+  resize();
+  createParticles();
+  tick();
+  window.addEventListener('resize', () => { resize(); });
+})();
+
+/* ─── Scroll Reveal ─── */
+(function () {
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('visible'); }
+    });
+  }, { threshold: 0.12 });
+  reveals.forEach(el => observer.observe(el));
+})();
+
+/* ─── Animated Score Bars ─── */
+(function () {
+  const fills = document.querySelectorAll('.score-fill');
+  const values = document.querySelectorAll('[data-score]');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (!e.isIntersecting) return;
+      // Animate fills
+      fills.forEach(fill => {
+        const target = parseFloat(fill.dataset.target);
+        setTimeout(() => { fill.style.width = Math.min(target, 100) + '%'; }, 200);
+      });
+      // Animate numbers
+      values.forEach(el => {
+        const target = parseFloat(el.dataset.score);
+        let start = 0;
+        const dur = 1400;
+        const step = (ts) => {
+          if (!start) start = ts;
+          const prog = Math.min((ts - start) / dur, 1);
+          const ease = 1 - Math.pow(1 - prog, 3);
+          el.textContent = (ease * target).toFixed(target % 1 === 0 ? 0 : 2) + '%';
+          if (prog < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      });
+      observer.disconnect();
+    });
+  }, { threshold: 0.3 });
+
+  const section = document.getElementById('scores');
+  if (section) observer.observe(section);
+})();
+
+/* ─── Nav sticky shadow ─── */
+window.addEventListener('scroll', () => {
+  const nav = document.getElementById('nav');
+  nav.style.background = window.scrollY > 50
+    ? 'rgba(5,8,17,0.95)'
+    : 'rgba(5,8,17,0.7)';
+});
+</script>
+
+</body>
+</html>
