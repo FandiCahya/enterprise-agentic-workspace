@@ -41,17 +41,14 @@ from ragas.metrics import (
 )
 from ragas.llms import LangchainLLMWrapper
 from ragas.embeddings import LangchainEmbeddingsWrapper
-from langchain_google_genai import ChatGoogleGenerativeAI
 
+from src.core.config import build_embeddings, build_llm
 from src.core.graph import agentic_app
-from src.core.retrieval import build_embeddings
 
 load_dotenv()
 
-# Setup Evaluator Model & Embeddings menggunakan model yang didukung
-evaluator_llm = LangchainLLMWrapper(
-    ChatGoogleGenerativeAI(model="gemini-3.6-flash", temperature=0)
-)
+# Setup Evaluator Model & Embeddings (shared config)
+evaluator_llm = LangchainLLMWrapper(build_llm(streaming=False, temperature=0))
 evaluator_embeddings = LangchainEmbeddingsWrapper(build_embeddings())
 
 

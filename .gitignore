@@ -2,15 +2,26 @@
 venv/
 ENV/
 env/
+.venv/
+
+# Data (keep sample/docs as needed)
 data/*
 !data/.gitkeep
 
-# Environment Variables (API Keys rahasia)
+# Environment Variables (secrets)
 .env
+.env.*
 
-# Python Cache & Database lokal
+# Python cache & build artifacts
 __pycache__/
 *.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local DB / vector stores
 *.sqlite3
 .chroma/
 chroma_db/
@@ -19,3 +30,13 @@ chroma_db/
 frontend/node_modules/
 frontend/dist/
 frontend/.env.local
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Reports (generated)
+reports/*.csv
+!reports/.gitkeep

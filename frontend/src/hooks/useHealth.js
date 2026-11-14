@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-
-const API_BASE = import.meta.env.VITE_API_URL ?? '';
+import { apiUrl } from '../lib/api';
 
 export function useHealth() {
   const [status, setStatus] = useState('checking'); // 'checking' | 'online' | 'offline'
 
   const check = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(4000) });
+      const res = await fetch(apiUrl('/health'), { signal: AbortSignal.timeout(4000) });
       setStatus(res.ok ? 'online' : 'offline');
     } catch {
       setStatus('offline');
@@ -22,3 +21,4 @@ export function useHealth() {
 
   return { status, refetch: check };
 }
+

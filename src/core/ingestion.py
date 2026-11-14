@@ -33,27 +33,11 @@ if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
     except Exception:
         pass
 
-from dotenv import load_dotenv
-load_dotenv()
-
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_postgres import PGVector
 
-# ------------------------------------------------------------------
-# Konfigurasi
-# ------------------------------------------------------------------
-POSTGRES_USER     = os.getenv("POSTGRES_USER", "admin")
-POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "adminpassword")
-POSTGRES_HOST     = os.getenv("POSTGRES_HOST", "localhost")
-POSTGRES_PORT     = os.getenv("POSTGRES_PORT", "5432")
-POSTGRES_DB       = os.getenv("POSTGRES_DB", "enterprise_rag")
-
-DATABASE_URL    = (
-    f"postgresql+psycopg://{POSTGRES_USER}:{POSTGRES_PASSWORD}"
-    f"@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
-)
-COLLECTION_NAME = "enterprise_knowledge_base"
+from src.core.config import COLLECTION_NAME, build_embeddings, get_database_url
 
 SUPPORTED_EXTENSIONS = [".pdf", ".docx", ".txt", ".md"]
 
@@ -62,27 +46,7 @@ SUPPORTED_EXTENSIONS = [".pdf", ".docx", ".txt", ".md"]
 # Helpers: Embedding & Loader
 # ------------------------------------------------------------------
 
-def build_embeddings():
-    """Inisialisasi model embedding — ikuti setting USE_LOCAL_EMBEDDINGS di .env."""
-    use_local = os.getenv("USE_LOCAL_EMBEDDINGS", "true").lower() in {"1", "true", "yes", "y"}
-
-    if use_local:
-        try:
-            from langchain_huggingface import HuggingFaceEmbeddings
-        except ImportError:
-            from langchain_community.embeddings import HuggingFaceEmbeddings  # fallback
-        print("[INFO] Menggunakan embedding lokal: sentence-transformers/all-MiniLM-L6-v2")
-        return HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-
-    try:
-        from langchain_google_genai import GoogleGenerativeAIEmbeddings
-        model = os.getenv("EMBEDDING_MODEL", "models/text-embedding-004")
-        print(f"[INFO] Menggunakan Google Embeddings: {model}")
-        return GoogleGenerativeAIEmbeddings(model=model)
-    except Exception as exc:
-        print(f"[WARNING] Google embeddings gagal, fallback ke lokal: {exc}")
-        from langchain_huggingface import HuggingFaceEmbeddings
-        return HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+# Embedding builder is provided by src.core.config for consistent behavior.
 
 
 def load_file(file_path: str) -> List[Document]:
@@ -158,7 +122,7 @@ class DocumentIngestionEngine:
         self.vector_store = PGVector(
             embeddings=self.embeddings,
             collection_name=COLLECTION_NAME,
-            connection=DATABASE_URL,
+            connection=get_database_url(),
             use_jsonb=True,
         )
         print("[OK] Siap melakukan ingestion.\n")

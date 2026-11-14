@@ -1,35 +1,54 @@
-version: '3.8'
-
 services:
-  # 1. Vector Database: PostgreSQL dengan Ekstensi PGVector
   postgres-pgvector:
     image: pgvector/pgvector:pg16
     container_name: postgres-pgvector
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: adminpassword
-      POSTGRES_DB: enterprise_rag
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-adminpassword}
+      POSTGRES_DB: ${POSTGRES_DB:-enterprise_rag}
     ports:
       - "5432:5432"
     volumes:
       - pgvector_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d enterprise_rag"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-enterprise_rag}"]
       interval: 5s
       timeout: 5s
-      retries: 5
-    restart: always
+      retries: 10
+    restart: unless-stopped
 
-  # 2. LLM Observability & Tracing: Arize Phoenix
   phoenix-observability:
     image: arizephoenix/phoenix:latest
     container_name: phoenix-observability
     ports:
-      - "6006:6006" # UI Dashboard Phoenix
-      - "4317:4317" # OpenTelemetry gRPC Collector
+      - "6006:6006" # Phoenix UI
+      - "4317:4317" # OTLP gRPC collector
     environment:
       - PHOENIX_PORT=6006
-    restart: always
+    restart: unless-stopped
+
+  # Optional: run backend in Docker (requires built image/context with dependencies)
+  backend:
+    profiles: ["app"]
+    image: python:3.12-slim
+    container_name: enterprise-rag-backend
+    working_dir: /app
+    command: sh -c "pip install --no-cache-dir -r requirements.txt && uvicorn src.main:app --host 0.0.0.0 --port 8000"
+    volumes:
+      - ./:/app
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres-pgvector
+      POSTGRES_PORT: 5432
+      PHOENIX_ENDPOINT: http://phoenix-observability:6006/v1/traces
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres-pgvector:
+        condition: service_healthy
+      phoenix-observability:
+        condition: service_started
 
 volumes:
   pgvector_data:

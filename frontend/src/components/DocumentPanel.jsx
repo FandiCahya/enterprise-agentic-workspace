@@ -3,8 +3,7 @@ import {
   Upload, Search, FileText, AlertCircle, CheckCircle,
   FileUp, X, FileBadge, Layers
 } from 'lucide-react';
-
-const API_BASE = import.meta.env.VITE_API_URL ?? '';
+import { apiFetch } from '../lib/api';
 
 const FILE_ICONS = {
   pdf:  '📄',
@@ -95,7 +94,7 @@ function UploadTab() {
     formData.append('file', file);
 
     try {
-      const res = await fetch(`${API_BASE}/api/v1/documents/upload`, {
+      const res = await apiFetch('/api/v1/documents/upload', {
         method: 'POST',
         body: formData,
       });
@@ -248,7 +247,7 @@ function IngestTab() {
       let metadata = {};
       try { metadata = JSON.parse(metaStr); } catch { /* invalid JSON */ }
 
-      const res = await fetch(`${API_BASE}/api/v1/documents/ingest`, {
+      const res = await apiFetch('/api/v1/documents/ingest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: content.trim(), metadata }),
@@ -333,7 +332,7 @@ function SearchTab() {
     setError(null);
     setResults(null);
     try {
-      const res = await fetch(`${API_BASE}/api/v1/documents/search`, {
+      const res = await apiFetch('/api/v1/documents/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: query.trim(), top_k: topK }),

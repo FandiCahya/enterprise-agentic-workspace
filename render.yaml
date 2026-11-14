@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: enterprise-agentic-backend
+    runtime: python
+    region: singapore
+    plan: free
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn src.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: USE_LOCAL_EMBEDDINGS
+        value: "true"
+      - key: LLM_MODEL
+        value: "gemini-2.0-flash"
+      - key: EMBEDDING_MODEL
+        value: "models/text-embedding-004"
+      - key: COLLECTION_NAME
+        value: "enterprise_knowledge_base"
+      - key: ENABLE_TRACING
+        value: "false"
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: API_KEY
+        sync: false
+      - key: MAX_UPLOAD_MB
+        value: "20"

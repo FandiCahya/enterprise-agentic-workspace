@@ -1,33 +1,42 @@
 # API & Server
-fastapi
-uvicorn[standard]
-pydantic
-python-dotenv
+fastapi>=0.115.0,<1.0.0
+uvicorn[standard]>=0.30.0,<1.0.0
+pydantic>=2.8.0,<3.0.0
+python-dotenv>=1.0.1,<2.0.0
+python-multipart>=0.0.9,<1.0.0
 
 # LangChain Core
-langchain
-langchain-core
-langchain-community
-langchain-text-splitters
-langchain-postgres
+langchain>=0.3.0,<0.4.0
+langchain-core>=0.3.0,<0.4.0
+langchain-community>=0.3.0,<0.4.0
+langchain-text-splitters>=0.3.0,<0.4.0
+langchain-postgres>=0.0.12,<0.1.0
 
 # LangChain Integrations
-langchain-google-genai
-langchain-huggingface
-langgraph
+langchain-google-genai>=2.0.0,<3.0.0
+langchain-huggingface>=0.1.0,<0.2.0
+langgraph>=0.2.0,<0.4.0
 
 # Embeddings & ML
-sentence-transformers
-torch
+sentence-transformers>=3.0.0,<4.0.0
+torch>=2.3.0
 
-# Document Loaders
-pypdf
-docx2txt
+# Retrieval / Document loaders
+rank-bm25>=0.2.2,<0.3.0
+pypdf>=4.0.0,<6.0.0
+docx2txt>=0.8,<1.0.0
 
 # Database
-psycopg[binary]
+psycopg[binary]>=3.2.0,<4.0.0
+SQLAlchemy>=2.0.0,<3.0.0
+
+# Observability
+arize-phoenix>=4.0.0
+openinference-instrumentation-langchain>=0.1.0
+opentelemetry-sdk>=1.25.0
+opentelemetry-exporter-otlp>=1.25.0
 
 # Evaluation
-ragas
-datasets
-rank_bm25
+ragas>=0.2.0,<0.3.0
+datasets>=2.20.0,<4.0.0
+pandas>=2.2.0,<3.0.0

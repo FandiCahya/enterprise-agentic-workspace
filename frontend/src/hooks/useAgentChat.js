@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-
-const API_BASE = import.meta.env.VITE_API_URL ?? '';
+import { apiFetch } from '../lib/api';
 
 /**
  * useAgentChat
@@ -45,7 +44,7 @@ export function useAgentChat() {
     setStatus('thinking');
 
     try {
-      const res = await fetch(`${API_BASE}/api/v1/agent/chat`, {
+      const res = await apiFetch('/api/v1/agent/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query, stream: true }),

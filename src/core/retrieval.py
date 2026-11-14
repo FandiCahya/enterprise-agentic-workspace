@@ -1,45 +1,21 @@
 import os
 from typing import List, Optional
-from dotenv import load_dotenv
 
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
 from langchain_core.callbacks import CallbackManagerForRetrieverRun
 from langchain_postgres import PGVector
-from langchain_community.retrievers.bm25 import BM25Retriever
+try:
+    from langchain_community.retrievers import BM25Retriever
+except Exception:  # pragma: no cover - compatibility fallback
+    from langchain_community.retrievers.bm25 import BM25Retriever
 
-load_dotenv()
-
-
-def build_embeddings():
-    """Pilih embedding model sesuai konfigurasi env.
-    Default: HuggingFace lokal (tidak memerlukan API key).
-    Set USE_LOCAL_EMBEDDINGS=false untuk memakai Google Generative AI.
-    """
-    use_local = os.getenv("USE_LOCAL_EMBEDDINGS", "true").lower() in {"1", "true", "yes", "y"}
-    if use_local:
-        from langchain_huggingface import HuggingFaceEmbeddings
-        return HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-
-    # Fallback: Google Generative AI
-    try:
-        from langchain_google_genai import GoogleGenerativeAIEmbeddings
-        model = os.getenv("EMBEDDING_MODEL", "models/text-embedding-004")
-        return GoogleGenerativeAIEmbeddings(model=model)
-    except Exception as exc:
-        print(f"[WARNING] Google embeddings tidak tersedia, beralih ke HuggingFace lokal: {exc}")
-        from langchain_huggingface import HuggingFaceEmbeddings
-        return HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-
-# Konfigurasi Database PostgreSQL PGVector
-POSTGRES_USER = os.getenv("POSTGRES_USER", "admin")
-POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "adminpassword")
-POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
-POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
-POSTGRES_DB = os.getenv("POSTGRES_DB", "enterprise_rag")
-
-DATABASE_URL = f"postgresql+psycopg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
-COLLECTION_NAME = "enterprise_knowledge_base"
+from src.core.config import (
+    COLLECTION_NAME,
+    DEFAULT_RERANKER_MODEL,
+    build_embeddings,
+    get_database_url,
+)
 
 
 # ------------------------------------------------------------------
@@ -133,20 +109,19 @@ class AdvancedRetrievalEngine:
         dense_k: int = 10,
         sparse_k: int = 10,
         rerank_top_n: int = 3,
-        reranker_model_name: str = "BAAI/bge-reranker-base"
+        reranker_model_name: str = DEFAULT_RERANKER_MODEL,
     ):
         self.dense_k = dense_k
         self.sparse_k = sparse_k
         self.rerank_top_n = rerank_top_n
+        self.database_url = get_database_url()
 
-        # 1. Inisialisasi Embeddings & PGVector Store
-        # Menggunakan build_embeddings() agar konsisten dengan main.py:
-        # default HuggingFace lokal, atau Google jika USE_LOCAL_EMBEDDINGS=false
+        # 1. Inisialisasi Embeddings & PGVector Store (konfigurasi terpusat)
         self.embeddings = build_embeddings()
         self.vector_store = PGVector(
             embeddings=self.embeddings,
             collection_name=COLLECTION_NAME,
-            connection=DATABASE_URL,
+            connection=self.database_url,
             use_jsonb=True,
         )
 
@@ -158,7 +133,7 @@ class AdvancedRetrievalEngine:
         # 3. Inisialisasi Cross-Encoder Reranker
         self.reranker = CrossEncoderReranker(
             model_name=reranker_model_name,
-            top_n=self.rerank_top_n
+            top_n=self.rerank_top_n,
         )
 
         # Placeholder untuk Hybrid Retriever (diisi saat initialize_hybrid_search)
@@ -170,23 +145,28 @@ class AdvancedRetrievalEngine:
         Jika all_documents tidak diberikan, akan mengambil sampel dari database PGVector.
         """
         if not all_documents:
-            # Ambil dokumen acuan dari PGVector untuk inisialisasi indeks BM25
             print("📥 Mengambil dokumen dari PGVector untuk membangun indeks BM25...")
-            sample_docs = self.vector_store.similarity_search("", k=200)
+            # Best-effort: try to fetch a reasonably large sample for BM25 indexing
+            sample_docs = self.vector_store.similarity_search("", k=500)
             if not sample_docs:
-                raise ValueError("Database PGVector masih kosong. Jalankan ingestion.py terlebih dahulu!")
+                raise ValueError(
+                    "Database PGVector masih kosong. Jalankan ingestion terlebih dahulu."
+                )
             all_documents = sample_docs
 
-        # Bangun BM25 Sparse Retriever
         bm25_retriever = BM25Retriever.from_documents(all_documents)
         bm25_retriever.k = self.sparse_k
 
-        # Gabungkan Dense + Sparse menggunakan Reciprocal Rank Fusion (RRF)
         self.hybrid_retriever = EnsembleRetriever(
             retrievers=[bm25_retriever, self.dense_retriever],
-            weights=[0.4, 0.6]  # 40% BM25 keyword, 60% Semantic Vector
+            weights=[0.4, 0.6],
         )
         print("✅ Hybrid Search + Cross-Encoder Re-ranking siap digunakan!")
+
+    def refresh(self):
+        """Rebuild hybrid retriever (e.g. after new documents are ingested)."""
+        self.hybrid_retriever = None
+        self.initialize_hybrid_search()
 
     def search(self, query: str) -> List[Document]:
         """Eksekusi pencarian end-to-end: Dense + Sparse → RRF Fusion → Cross-Encoder Reranking."""
