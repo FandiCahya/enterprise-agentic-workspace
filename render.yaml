@@ -4,7 +4,8 @@ services:
     runtime: python
     region: singapore
     plan: free
-    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    # Lite mode: avoids heavy local ML deps (torch/sentence-transformers/cross-encoder)
+    buildCommand: pip install --upgrade pip && pip install -r requirements-lite.txt
     startCommand: uvicorn src.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
@@ -15,7 +16,9 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: USE_LOCAL_EMBEDDINGS
-        value: "true"
+        value: "false"
+      - key: ENABLE_RERANKER
+        value: "false"
       - key: LLM_MODEL
         value: "gemini-2.0-flash"
       - key: EMBEDDING_MODEL

@@ -15,6 +15,7 @@ from src.core.config import (
     DEFAULT_RERANKER_MODEL,
     build_embeddings,
     get_database_url,
+    reranker_enabled,
 )
 
 
@@ -115,6 +116,7 @@ class AdvancedRetrievalEngine:
         self.sparse_k = sparse_k
         self.rerank_top_n = rerank_top_n
         self.database_url = get_database_url()
+        self.reranker_enabled = reranker_enabled()
 
         # 1. Inisialisasi Embeddings & PGVector Store (konfigurasi terpusat)
         self.embeddings = build_embeddings()
@@ -130,11 +132,20 @@ class AdvancedRetrievalEngine:
             search_kwargs={"k": self.dense_k}
         )
 
-        # 3. Inisialisasi Cross-Encoder Reranker
-        self.reranker = CrossEncoderReranker(
-            model_name=reranker_model_name,
-            top_n=self.rerank_top_n,
-        )
+        # 3. Inisialisasi Cross-Encoder Reranker (opsional, untuk mode lite/free tier)
+        self.reranker: Optional[CrossEncoderReranker] = None
+        if self.reranker_enabled:
+            try:
+                self.reranker = CrossEncoderReranker(
+                    model_name=reranker_model_name,
+                    top_n=self.rerank_top_n,
+                )
+            except Exception as exc:
+                # Fallback agar API tetap bisa jalan pada environment terbatas
+                print(f"[WARNING] Reranker tidak aktif, fallback tanpa reranking: {exc}")
+                self.reranker = None
+        else:
+            print("[INFO] Reranker dinonaktifkan (ENABLE_RERANKER=false). Menggunakan hasil hybrid retrieval tanpa cross-encoder.")
 
         # Placeholder untuk Hybrid Retriever (diisi saat initialize_hybrid_search)
         self.hybrid_retriever: Optional[EnsembleRetriever] = None
@@ -169,18 +180,21 @@ class AdvancedRetrievalEngine:
         self.initialize_hybrid_search()
 
     def search(self, query: str) -> List[Document]:
-        """Eksekusi pencarian end-to-end: Dense + Sparse → RRF Fusion → Cross-Encoder Reranking."""
+        """Eksekusi pencarian end-to-end: Dense + Sparse → RRF Fusion → (opsional) Cross-Encoder Reranking."""
         if not self.hybrid_retriever:
             self.initialize_hybrid_search()
 
-        print(f"\n🔍 Menjalankan Hybrid Search & Re-ranking untuk: '{query}'")
+        print(f"\n🔍 Menjalankan Hybrid Search untuk: '{query}'")
 
         # Step 1: Hybrid retrieval (BM25 + PGVector via RRF)
         candidate_docs = self.hybrid_retriever.invoke(query)
 
-        # Step 2: Cross-Encoder re-ranking
-        ranked_docs = self.reranker.compress_documents(candidate_docs, query)
-        return ranked_docs
+        # Step 2: Cross-Encoder re-ranking (opsional)
+        if self.reranker:
+            return self.reranker.compress_documents(candidate_docs, query)
+
+        # Lite mode/fallback: ambil top-N hasil fusion
+        return candidate_docs[: self.rerank_top_n]
 
 
 if __name__ == "__main__":

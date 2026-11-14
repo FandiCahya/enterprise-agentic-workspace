@@ -4,7 +4,8 @@ Production-oriented Document Intelligence & Agentic RAG pipeline built with **Fa
 
 This repository includes:
 - **Backend API** for document ingestion, hybrid search, and agentic chat (streaming + non-streaming)
-- **RAG pipeline** with BM25 + dense vector retrieval, Reciprocal Rank Fusion (RRF), cross-encoder reranking, relevance evaluation, and query rewriting
+- **RAG pipeline** with BM25 + dense vector retrieval, Reciprocal Rank Fusion (RRF), optional cross-encoder reranking, relevance evaluation, and query rewriting
+- **Lite deployment mode** for low-resource/free-tier hosts (Google embeddings + reranker disabled, no local `torch`/`sentence-transformers` required)
 - **Observability hooks** for Arize Phoenix / OpenTelemetry
 - **RAGAS evaluation script** for automated quality checks
 - **React + Vite frontend** and a static **portfolio landing page**
@@ -23,7 +24,7 @@ This repository includes:
 
 ### Request flow (Agentic Chat)
 1. Retrieve candidate chunks via hybrid search (BM25 + PGVector, RRF)
-2. Re-rank candidates with a cross-encoder (`BAAI/bge-reranker-base` by default)
+2. (Optional) Re-rank candidates with a cross-encoder (`BAAI/bge-reranker-base` by default, can be disabled with `ENABLE_RERANKER=false`)
 3. Evaluate context relevance with an LLM
 4. If not relevant, rewrite the query once and retry retrieval/evaluation
 5. Generate a grounded answer from validated context (or return a fast-fail response)
@@ -68,7 +69,8 @@ This repository includes:
 - **Google API key** (for Gemini LLM; embeddings can run locally by default)
 
 > Notes:
-> - Default embedding mode is local (`USE_LOCAL_EMBEDDINGS=true`) to reduce external dependencies.
+> - **Full/local mode (default in `.env.example`)**: `USE_LOCAL_EMBEDDINGS=true`, `ENABLE_RERANKER=true` (higher quality, heavier dependencies/resources)
+> - **Lite mode (recommended for free-tier deploy)**: `USE_LOCAL_EMBEDDINGS=false`, `ENABLE_RERANKER=false` with `requirements-lite.txt` (avoids `torch`/`sentence-transformers`)
 > - If you switch embedding models/providers for an existing collection, re-ingest documents to avoid vector-space mismatch.
 
 ## Environment Variables
@@ -76,11 +78,13 @@ This repository includes:
 Copy `.env.example` to `.env` and configure as needed.
 
 Key variables:
-- `GOOGLE_API_KEY` — Gemini API key (required for chat/eval unless you adapt LLM provider)
+- `GOOGLE_API_KEY` — Gemini API key (required for chat/eval and for Google embeddings in lite mode)
 - `LLM_MODEL` — chat/eval model (default: `gemini-2.0-flash`)
-- `USE_LOCAL_EMBEDDINGS` — `true`/`false` (default: `true`)
+- `USE_LOCAL_EMBEDDINGS` — `true`/`false` (default: `true` in code; set `false` for lite deploy)
+- `ENABLE_RERANKER` — `true`/`false` (default: `true`; set `false` for lite deploy)
 - `EMBEDDING_MODEL` — Google embedding model when local embeddings disabled
 - `LOCAL_EMBEDDING_MODEL` — local sentence-transformers model (default: `sentence-transformers/all-MiniLM-L6-v2`)
+- `ALLOW_LOCAL_EMBEDDING_FALLBACK` — allow fallback to local embeddings if Google embedding init fails (default: `true`)
 - `DATABASE_URL` — preferred in hosted environments (Neon/Render); auto-normalized to `postgresql+psycopg://`
 - `POSTGRES_*` — used when `DATABASE_URL` is not provided
 - `COLLECTION_NAME` — PGVector collection name (default: `enterprise_knowledge_base`)
@@ -105,7 +109,11 @@ python -m venv .venv
 # source .venv/bin/activate
 
 pip install --upgrade pip
+# Full mode (local embeddings + reranker, heavier)
 pip install -r requirements.txt
+# OR Lite mode (recommended for low-resource hosts; use Google embeddings)
+# pip install -r requirements-lite.txt
+
 cp .env.example .env  # then edit values
 ```
 
@@ -190,11 +198,11 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs:
 For a step-by-step setup (including environment variable examples for **Neon + Render + Vercel**), see [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
 ### Quick summary
-- **Backend (Render) + DB (Neon/PostgreSQL + pgvector)**
-  - Use `DATABASE_URL` (recommended), set `GOOGLE_API_KEY`, `ALLOWED_ORIGINS`, and `API_KEY`
-  - Build: `pip install --upgrade pip && pip install -r requirements.txt`
+- **Backend (Render, lite/free-tier recommended) + DB (Neon/PostgreSQL + pgvector)**
+  - Build: `pip install --upgrade pip && pip install -r requirements-lite.txt`
   - Start: `uvicorn src.main:app --host 0.0.0.0 --port $PORT`
   - Health check: `/health`
+  - Env: `DATABASE_URL`, `GOOGLE_API_KEY`, `USE_LOCAL_EMBEDDINGS=false`, `ENABLE_RERANKER=false`, `ALLOWED_ORIGINS`, `API_KEY`
 - **Frontend (Vercel, `frontend/`)**
   - Set `VITE_API_URL` to backend URL
   - Set `VITE_API_KEY` if backend `API_KEY` is enabled (frontend now attaches `x-api-key` automatically)
@@ -202,9 +210,11 @@ For a step-by-step setup (including environment variable examples for **Neon + R
   - `portfolio/` can be deployed separately as a static site
 
 > After deployment, ingest documents into the deployed database/collection before testing chat/search.
+> If you switch embedding mode/provider, re-ingest into the same or a new `COLLECTION_NAME`.
 
 ## Operational Notes & Limitations
-- **Embedding compatibility:** changing embedding models requires re-indexing/re-ingestion for the target collection.
+- **Lite vs full mode:** lite mode (`USE_LOCAL_EMBEDDINGS=false`, `ENABLE_RERANKER=false`, `requirements-lite.txt`) is easier to deploy on free/low-resource tiers but may reduce retrieval quality compared to full local embeddings + cross-encoder reranking.
+- **Embedding compatibility:** changing embedding models/providers requires re-indexing/re-ingestion for the target collection (or use a different `COLLECTION_NAME`).
 - **Hybrid BM25 index:** BM25 is initialized from a sampled subset of stored documents on engine initialization; very large corpora may benefit from a persisted/full-corpus lexical index strategy.
 - **Stateful in-memory components:** retrieval engine and vector store are lazily cached in-process; multi-instance deployments should consider shared indexing/refresh strategies.
 - **LLM dependency:** chat and evaluation require access to a configured LLM provider/model; deployment environments must provide valid credentials and outbound access.

@@ -23,6 +23,11 @@ DEFAULT_LOCAL_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 DEFAULT_RERANKER_MODEL = os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-base")
 
 
+def reranker_enabled() -> bool:
+    # Default on for full/local setups; set ENABLE_RERANKER=false for lite/free-tier deploys
+    return env_bool("ENABLE_RERANKER", default=True)
+
+
 def env_bool(name: str, default: bool = False) -> bool:
     value = os.getenv(name)
     if value is None:
@@ -81,7 +86,13 @@ def build_embeddings(use_local: Optional[bool] = None):
         use_local = env_bool("USE_LOCAL_EMBEDDINGS", default=True)
 
     if use_local:
-        from langchain_huggingface import HuggingFaceEmbeddings
+        try:
+            from langchain_huggingface import HuggingFaceEmbeddings
+        except Exception as exc:  # pragma: no cover - depends on optional deps
+            raise RuntimeError(
+                "Local embeddings require optional dependencies (langchain-huggingface, "
+                "sentence-transformers, torch). Set USE_LOCAL_EMBEDDINGS=false to use Google embeddings."
+            ) from exc
 
         model_name = os.getenv("LOCAL_EMBEDDING_MODEL", DEFAULT_LOCAL_EMBEDDING_MODEL)
         return HuggingFaceEmbeddings(model_name=model_name)
@@ -91,8 +102,17 @@ def build_embeddings(use_local: Optional[bool] = None):
 
         return GoogleGenerativeAIEmbeddings(model=resolve_google_embedding_model())
     except Exception as exc:
-        print(f"[WARNING] Google embeddings unavailable, falling back to local embeddings: {exc}")
-        from langchain_huggingface import HuggingFaceEmbeddings
+        # In lite deployments, local fallback deps may not be installed.
+        if not env_bool("ALLOW_LOCAL_EMBEDDING_FALLBACK", default=True):
+            raise
+        print(f"[WARNING] Google embeddings unavailable, attempting local embedding fallback: {exc}")
+        try:
+            from langchain_huggingface import HuggingFaceEmbeddings
+        except Exception:
+            raise RuntimeError(
+                "Google embeddings failed and local embedding fallback dependencies are unavailable. "
+                "Check GOOGLE_API_KEY/EMBEDDING_MODEL or install full dependencies."
+            ) from exc
 
         model_name = os.getenv("LOCAL_EMBEDDING_MODEL", DEFAULT_LOCAL_EMBEDDING_MODEL)
         return HuggingFaceEmbeddings(model_name=model_name)

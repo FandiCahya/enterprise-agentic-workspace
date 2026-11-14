@@ -6,6 +6,8 @@ This guide provides a practical deployment setup for:
 - **Frontend:** Vercel (React/Vite app in `frontend/`)
 
 > The backend and frontend are deployed separately. The frontend calls the backend via `VITE_API_URL`.
+>
+> **Recommended for free tier:** use **Lite mode** (`requirements-lite.txt`, `USE_LOCAL_EMBEDDINGS=false`, `ENABLE_RERANKER=false`) to avoid heavy ML dependencies (`torch`, `sentence-transformers`) that often fail on low-resource hosts.
 
 ## 1) Neon (PostgreSQL + pgvector)
 
@@ -28,42 +30,65 @@ CREATE EXTENSION IF NOT EXISTS vector;
 Deploy the repository root as a Python web service.
 
 ### Recommended Render settings
-- **Build command:** `pip install --upgrade pip && pip install -r requirements.txt`
+
+#### Lite mode (recommended for free tier)
+- **Build command:** `pip install --upgrade pip && pip install -r requirements-lite.txt`
 - **Start command:** `uvicorn src.main:app --host 0.0.0.0 --port $PORT`
 - **Health check path:** `/health`
-- **Python version:** 3.12.x (set `PYTHON_VERSION` or Render runtime config)
+- **Python version:** 3.12.x
 
-You can also use `render.yaml` in this repo as a starting point.
+#### Full mode (requires more memory/CPU; may not fit free tier)
+- **Build command:** `pip install --upgrade pip && pip install -r requirements.txt`
+
+You can also use `render.yaml` in this repo as a starting point (configured for lite mode by default).
 
 ### Backend environment variables (example)
 
+#### Lite mode (Render free tier recommended)
 ```env
-# Required (LLM/chat + eval)
+# Required (LLM/chat + Google embeddings)
 GOOGLE_API_KEY=<your-google-gemini-api-key>
 
 # Database (recommended: Neon connection string)
 DATABASE_URL=postgresql://<user>:<password>@<host>/<db>?sslmode=require
 
-# RAG / models
+# RAG / models (lite)
 LLM_MODEL=gemini-2.0-flash
-USE_LOCAL_EMBEDDINGS=true
-LOCAL_EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+USE_LOCAL_EMBEDDINGS=false
+ENABLE_RERANKER=false
 EMBEDDING_MODEL=models/text-embedding-004
 COLLECTION_NAME=enterprise_knowledge_base
-RERANKER_MODEL=BAAI/bge-reranker-base
 
 # API security / browser access
 ALLOWED_ORIGINS=https://<your-frontend>.vercel.app
 API_KEY=<generate-a-strong-random-secret>
 MAX_UPLOAD_MB=20
 
-# Observability (disable unless you have a reachable Phoenix/OTLP endpoint)
+# Observability
 ENABLE_TRACING=false
-PHOENIX_ENDPOINT=http://localhost:6006/v1/traces
+```
+
+#### Full mode (heavier, local embeddings/reranker)
+```env
+GOOGLE_API_KEY=<your-google-gemini-api-key>
+DATABASE_URL=postgresql://<user>:<password>@<host>/<db>?sslmode=require
+LLM_MODEL=gemini-2.0-flash
+USE_LOCAL_EMBEDDINGS=true
+ENABLE_RERANKER=true
+LOCAL_EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+EMBEDDING_MODEL=models/text-embedding-004
+COLLECTION_NAME=enterprise_knowledge_base
+RERANKER_MODEL=BAAI/bge-reranker-base
+ALLOWED_ORIGINS=https://<your-frontend>.vercel.app
+API_KEY=<generate-a-strong-random-secret>
+MAX_UPLOAD_MB=20
+ENABLE_TRACING=false
 ```
 
 ### Important backend notes
-- **Cold start / first request latency:** the retrieval engine and models may initialize lazily on first use (embedding/reranker downloads), which can increase first-request time.
+- **Lite mode tradeoff:** disabling local embeddings and reranker reduces resource usage and improves deploy success on free tier, but retrieval quality may be lower than full mode.
+- **Embedding consistency:** if you switch between lite (Google embeddings) and full/local embeddings, you must re-ingest documents into the same collection (or use a different `COLLECTION_NAME`) because vector spaces differ.
+- **Cold start / first request latency:** the retrieval engine may still initialize lazily on first use. Lite mode is typically faster/lighter than full mode.
 - **Document ingestion:** deploy does not auto-ingest your local `data/` files. You must ingest into the deployed database (CLI/job/script against the same `DATABASE_URL` and `COLLECTION_NAME`).
 - **API key:** if `API_KEY` is set, clients must send header `x-api-key: <API_KEY>` for protected endpoints (`/api/v1/documents/*`, `/api/v1/agent/chat`). `/health` remains public.
 
